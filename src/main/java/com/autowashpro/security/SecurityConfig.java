@@ -45,48 +45,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/transactions/payos/webhook").permitAll()
                         .requestMatchers("/api/promotions/active").permitAll()
                         .requestMatchers("/api/promotions/check/**").permitAll()
-                        .requestMatchers("/api/loyalty/rewards").permitAll() // Xem danh sách quà thì ai xem cũng được
-                        .requestMatchers("/api/loyalty/**").authenticated() // Tất cả các hành động đổi quà, xem lịch sử
-                                                                            // cần phải ĐĂNG NHẬP
+                        .requestMatchers("/api/loyalty/rewards").permitAll()
+                        .requestMatchers("/api/loyalty/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/contacts").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contacts/my").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/contacts/*/reply-customer").authenticated()
                         .requestMatchers("/api/contacts/**").hasAnyRole("STAFF", "MANAGER", "ADMIN")
+                        .requestMatchers("/api/feedbacks/public").permitAll()
+                        .requestMatchers("/api/feedbacks/booking/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/feedbacks").authenticated()
+                        .requestMatchers("/api/feedbacks/**").hasAnyRole("STAFF", "MANAGER", "ADMIN")
+                        .requestMatchers("/api/walkin/**").hasAnyRole("STAFF", "MANAGER", "ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/api/staff/**").hasAnyRole("STAFF", "MANAGER", "ADMIN")
                         .anyRequest().authenticated())
-                .authenticationProvider(authenticationProvider()) // ← thêm dòng này
+                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/tiers/**").permitAll()
-                .requestMatchers("/api/vehicle-types/**").permitAll()
-                .requestMatchers("/api/services/**").permitAll()
-                .requestMatchers("/api/bookings/slots").permitAll()
-                .requestMatchers("/api/transactions/payos/webhook").permitAll()
-                .requestMatchers("/api/promotions/active").permitAll()
-                .requestMatchers("/api/promotions/check/**").permitAll()
-                .requestMatchers("/api/loyalty/rewards").permitAll() // Xem danh sách quà thì ai xem cũng được
-                .requestMatchers("/api/loyalty/**").authenticated()   // Tất cả các hành động đổi quà, xem lịch sử cần phải ĐĂNG NHẬP
-                .requestMatchers(HttpMethod.POST, "/api/contacts").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/contacts/my").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/contacts/*/reply-customer").authenticated()
-                .requestMatchers("/api/contacts/**").hasAnyRole("STAFF","MANAGER","ADMIN")
-                .requestMatchers("/api/feedbacks/public").permitAll()
-                .requestMatchers("/api/feedbacks/booking/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/feedbacks").authenticated()
-                .requestMatchers("/api/feedbacks/**").hasAnyRole("STAFF","MANAGER","ADMIN")
-                .requestMatchers("/api/walkin/**").hasAnyRole("STAFF","MANAGER","ADMIN")
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/manager/**").hasAnyRole("MANAGER","ADMIN")
-                .requestMatchers("/api/staff/**").hasAnyRole("STAFF","MANAGER","ADMIN")
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider()) // ← thêm dòng này
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -104,7 +79,6 @@ public class SecurityConfig {
         return source;
     }
 
-    // ← thêm bean này — quan trọng nhất!
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -119,8 +93,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }
