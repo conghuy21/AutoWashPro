@@ -1,5 +1,12 @@
 package com.autowashpro.service;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.autowashpro.dto.request.LoginRequest;
 import com.autowashpro.dto.request.RegisterRequest;
 import com.autowashpro.dto.response.UserDTO;
@@ -8,13 +15,8 @@ import com.autowashpro.entity.User;
 import com.autowashpro.repository.PasswordResetRepository;
 import com.autowashpro.repository.UserRepository;
 import com.autowashpro.security.JwtUtil;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -45,8 +47,7 @@ public class AuthService {
 
         return Map.of(
                 "message", "Đăng ký thành công!",
-                "user", UserDTO.fromEntity(user)
-        );
+                "user", UserDTO.fromEntity(user));
     }
 
     public Map<String, Object> login(LoginRequest req) {
@@ -65,8 +66,7 @@ public class AuthService {
 
         return Map.of(
                 "token", token,
-                "user", UserDTO.fromEntity(user)
-        );
+                "user", UserDTO.fromEntity(user));
     }
 
     public UserDTO getMe(String email) {
@@ -76,58 +76,68 @@ public class AuthService {
     }
 
     /* ===== QUÊN MẬT KHẨU ===== */
-@Transactional
-public void forgotPassword(String email) {
-    User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+    @Transactional
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
 
-    // Xóa token cũ nếu có
-    passwordResetRepository.deleteByUser_UserId(user.getUserId());
+        // Xóa token cũ nếu có
+        passwordResetRepository.deleteByUser_UserId(user.getUserId());
 
-    // Tạo token mới
-    String token = java.util.UUID.randomUUID().toString();
+        // Tạo token mới
+        String token = java.util.UUID.randomUUID().toString();
 
-    PasswordReset reset = new PasswordReset();
-    reset.setUser(user);
-    reset.setToken(token);
-    reset.setExpiresAt(LocalDateTime.now().plusMinutes(15));
-    reset.setUsed(false);
-    passwordResetRepository.save(reset);
+        PasswordReset reset = new PasswordReset();
+        reset.setUser(user);
+        reset.setToken(token);
+        reset.setExpiresAt(LocalDateTime.now().plusMinutes(15));
+        reset.setUsed(false);
+        passwordResetRepository.save(reset);
 
-    // Gửi email
-    emailService.sendResetPasswordEmail(email, token);
-}
-
-/* ===== ĐẶT LẠI MẬT KHẨU ===== */
-@Transactional
-public void resetPassword(String token, String newPassword) {
-    PasswordReset reset = passwordResetRepository.findByTokenAndUsedFalse(token)
-            .orElseThrow(() -> new RuntimeException("Token không hợp lệ hoặc đã hết hạn!"));
-
-    if (reset.getExpiresAt().isBefore(LocalDateTime.now())) {
-        throw new RuntimeException("Token đã hết hạn! Vui lòng yêu cầu lại.");
+        // Gửi email
+        emailService.sendResetPasswordEmail(email, token);
     }
 
-    User user = reset.getUser();
-    user.setPasswordHash(passwordEncoder.encode(newPassword));
-    userRepository.save(user);
+    /* ===== ĐẶT LẠI MẬT KHẨU ===== */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordReset reset = passwordResetRepository.findByTokenAndUsedFalse(token)
+                .orElseThrow(() -> new RuntimeException("Token không hợp lệ hoặc đã hết hạn!"));
 
-    reset.setUsed(true);
-    passwordResetRepository.save(reset);
-}
+        if (reset.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token đã hết hạn! Vui lòng yêu cầu lại.");
+        }
 
-/* ===== ĐỔI MẬT KHẨU ===== */
-@Transactional
-public void changePassword(String email, String oldPassword, String newPassword) {
-    User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = reset.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
 
-    if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-        throw new RuntimeException("Mật khẩu cũ không đúng!");
+        reset.setUsed(true);
+        passwordResetRepository.save(reset);
     }
 
-    user.setPasswordHash(passwordEncoder.encode(newPassword));
-    userRepository.save(user);
-}
+    /* ===== ĐỔI MẬT KHẨU ===== */
+    @Transactional
+    public Map<String, Object> changePassword(String email, String oldPassword, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản!"));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Mật khẩu hiện tại không đúng!");
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Mật khẩu mới phải khác mật khẩu hiện tại!");
+        }
+
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Mật khẩu mới phải có ít nhất 6 ký tự!");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return Map.of("message", "Đổi mật khẩu thành công!");
+    }
 
 }
