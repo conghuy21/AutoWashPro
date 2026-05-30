@@ -42,9 +42,20 @@ public class TransactionService {
                     + booking.getStatus());
         }
 
-        if (transactionRepository.findByBooking_BookingId(booking.getBookingId()).isPresent()) {
-            throw new RuntimeException("Booking này đã có transaction rồi");
-        }
+        // Kiểm tra transaction cũ
+var existingTransaction = transactionRepository
+        .findByBooking_BookingId(booking.getBookingId());
+
+if (existingTransaction.isPresent()) {
+    Transaction existing = existingTransaction.get();
+    if ("PAID".equals(existing.getPaymentStatus())) {
+        throw new RuntimeException("Booking này đã thanh toán rồi!");
+    }
+    // PENDING hoặc CANCELLED → xóa đi để tạo mới
+    transactionRepository.delete(existing);
+    // Ép database xóa luôn lập tức!
+    transactionRepository.flush();
+}
 
         // Tính subtotal
         BigDecimal subtotal = booking.getBookingServices().stream()

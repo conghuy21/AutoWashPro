@@ -52,16 +52,21 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.confirmPayment(id));
     }
 
-    /** POST /api/transactions/payos/webhook — PayOS callback */
-    @PostMapping("/payos/webhook")
-    public ResponseEntity<String> payosWebhook(@RequestBody String body) {
-        try {
-            payOSService.handleWebhook(body);
+   /** POST /api/transactions/payos/webhook — PayOS callback */
+@PostMapping("/payos/webhook")
+public ResponseEntity<String> payosWebhook(@RequestBody String body) {
+    try {
+        // Nếu body rỗng hoặc là test request → trả OK luôn
+        if (body == null || body.isEmpty() || body.equals("{}")) {
             return ResponseEntity.ok("OK");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
         }
+        payOSService.handleWebhook(body);
+        return ResponseEntity.ok("OK");
+    } catch (Exception e) {
+        // Trả OK để PayOS không retry liên tục
+        return ResponseEntity.ok("OK");
     }
+}
 
     /** PATCH /api/transactions/{id}/cancel-payos — Hủy PayOS */
     @PatchMapping("/{id}/cancel-payos")

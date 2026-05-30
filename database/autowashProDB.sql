@@ -871,3 +871,7 @@ SELECT email, password_hash FROM Users;
 
 ALTER TABLE Contacts 
 ALTER COLUMN message NVARCHAR(MAX) NULL;
+
+SELECT TransactionID, payment_status, paid_at 
+FROM Transactions 
+ORDER BY TransactionID DESC
