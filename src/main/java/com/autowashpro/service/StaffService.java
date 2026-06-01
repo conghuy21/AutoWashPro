@@ -95,8 +95,17 @@ public class StaffService {
     }
 
     private BookingResponse toResponse(Booking b) {
-        BigDecimal subtotal = b.getBookingServices().stream()
-                .map(bs -> bs.getPriceAtBooking())
+        List<BookingResponse.ServiceDetail> details = b.getBookingServices().stream()
+                .map(bs -> BookingResponse.ServiceDetail.builder()
+                        .serviceName(bs.getServicePrice().getService().getName())
+                        .category(bs.getServicePrice().getService().getCategory())
+                        .price(bs.getPriceAtBooking())
+                        .durationMinutes(bs.getDurationAtBooking())
+                        .build())
+                .collect(Collectors.toList());
+
+        BigDecimal subtotal = details.stream()
+                .map(BookingResponse.ServiceDetail::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return BookingResponse.builder()
@@ -114,6 +123,7 @@ public class StaffService {
                 .model(b.getVehicle().getModel())
                 .startTime(b.getTimeSlot().getStartTime())
                 .endTime(b.getTimeSlot().getEndTime())
+                .services(details)
                 .employeeName(b.getEmployee() != null
                         ? b.getEmployee().getUser().getFullName() : null)
                 .subtotal(subtotal)
